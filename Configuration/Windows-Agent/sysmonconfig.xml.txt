@@ -1,0 +1,9 @@
+<Sysmon schemaversion="4.90">
+   <EventFiltering>
+     <!--  Event ID 1 == Process Creation - Includes  -->
+     <RuleGroup groupRelation="or">
+       <ProcessCreate onmatch="include">
+         <!--  Add rules from here  -->
+         <Image condition="contains">powershell.exe</Image>
+         <Image condition="contains">cmd.exe</Image>
+         <!--  Ends of adding rules -->

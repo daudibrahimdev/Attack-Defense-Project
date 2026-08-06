@@ -1,0 +1,107 @@
+<!-- false negative spam fix -->
+<group name="windows,sysmon,">
+  <rule id="100200" level="0">
+    <if_sid>92910</if_sid>
+    <field name="win.eventdata.sourceImage">^C:\\\\WINDOWS\\\\system32\\\\AutoModeDetect\.exe$</field>
+    <field name="win.eventdata.targetImage">^C:\\\\WINDOWS\\\\Explorer\.EXE$</field>
+    <field name="win.eventdata.grantedAccess">^0x1410$</field>
+    <description>Ignore Lenovo AutoModeDetect benign access to Explorer.EXE</description>
+  </rule>
+</group>
+
+<!-- HID Attack Detection Rules -->
+<group name="windows, sysmon, badusb,">
+
+  <rule id="100101" level="7">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-WindowStyle\s+hidden|-w\s+hidden|-ep\s+bypass</field>
+    <description>WARNING: Suspicious hidden PowerShell execution detected (Potential threat or administrative activity).</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1564.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="100102" level="12" timeframe="5">
+    <if_sid>100101</if_sid>
+    <if_matched_sid>60227</if_matched_sid> <description>CRITICAL: Potential Keystroke Injection or Rogue HID attack. Instantaneous hidden PowerShell execution following hardware insertion.</description>
+    <mitre>
+      <id>T1200</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<!-- RCE Detection Rules -->
+<group name="linux_attack_chain,">
+
+    <!-- ===================================================== -->
+    <!-- STAGE 1 : ELF Download Detected by Suricata -->
+    <!-- ===================================================== -->
+    <rule id="100500" level="5">
+        <if_sid>86601</if_sid>
+        <field name="alert.signature_id">^2000418$</field>
+        <description>ELF executable transferred over network</description>
+        <group>payload_delivery,linux_payload,suricata,</group>
+    </rule>
+
+    <!-- ===================================================== -->
+    <!-- STAGE 2 : Executable From Downloads Initiates Connect() -->
+    <!-- ===================================================== -->
+    <rule id="100501" level="12">
+        <!-- Using the parent of auditd rule -->
+        <if_sid>80700</if_sid>
+        <field name="audit.key">network_outbound</field>
+        <field name="audit.exe">Downloads</field>
+        <description>Executable from user download directory initiated outbound connection</description>
+        <group>auditd,network,c2_candidate,</group>
+    </rule>
+
+
+
+    <!-- ===================================================== -->
+    <!-- STAGE 3 : Correlation -->
+    <!-- ===================================================== -->
+    <rule id="100505" level="15" timeframe="300">
+        <if_sid>100501</if_sid>
+        <if_matched_sid>100500</if_matched_sid>
+        <field name="audit.key">network_outbound</field>
+        <description>Downloaded ELF executable initiated outbound connection from user-controlled directory</description>
+        <mitre>
+            <id>T1105</id>
+            <id>T1071</id>
+        </mitre>
+        <group>attack_chain,payload_execution,c2_candidate,high_risk,</group>
+    </rule>
+    -->
+</group>
+
+<group name="linux_attack_chain,">
+
+    <rule id="111112" level="13" timeframe="300">
+        <if_sid>100500</if_sid>
+        <if_matched_sid>100501</if_matched_sid>
+        <field name="alert.signature_id">^2000418$</field>
+        <description>Downloaded ELF executable initiated outbound connection from user-controlled directory</description>
+        <mitre>
+            <id>T1105</id>
+            <id>T1071</id>
+        </mitre>
+        <group>attack_chain,payload_execution,c2_candidate,high_risk,</group>
+    </rule>
+
+</group>
+
+<!-- Bruteforce attack Detection Rules -->
+<group name="bruteforce_corelation,">
+
+    <rule id="111111" level="12" frequency="3" timeframe="120" ignore="1">
+        <if_matched_sid>5503</if_matched_sid>
+        <if_matched_sid>5760</if_matched_sid>
+        <if_matched_sid>5710</if_matched_sid>
+        <same_source_ip />
+        <description>SSH Bruteforce Attack Detected (Correlation of : 5503, 5760, 5710) triggered 3 times from same ip address within         2 minutes</description>
+    </rule>
+
+</group>

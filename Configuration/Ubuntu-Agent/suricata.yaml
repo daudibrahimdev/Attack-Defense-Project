@@ -1,0 +1,36 @@
+#NET-CONF
+vars:
+  address-groups:
+    HOME_NET: "[192.168.1.0/24,100.64.0.0/10]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+#AF-PACKET
+af-packet:
+  - interface: enp0s8
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    
+  - interface: tailscale0
+    cluster-id: 98
+    cluster-type: cluster_flow
+    defrag: yes
+    tpacket-v3: yes
+
+#COMMUNITY ID
+			community-id: yes
+      # Seed value for the ID output. Valid values are 0-65535.
+      community-id-seed: 0
+ #alert-eve-log
+ outputs:
+  # set the eve-log enabled: yes
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: yes             # to see the binary
+            payload-printable: yes   # Helps SOC analyst to make it readable
+        - http:
+            extended: yes
