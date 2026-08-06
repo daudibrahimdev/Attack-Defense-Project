@@ -1,0 +1,17 @@
+## new configuration for suspicious network activity such as malware
+# 1. Monitor shell execution (Target: Bash, Python, Netcat etc.)
+-w /bin/bash -p x -k shell_exec
+-w /usr/bin/python3 -p x -k python_exec
+-w /usr/bin/nc -p x -k netcat_exec
+
+# 2. Monitor syscall outbound connection
+-a always,exit -F arch=aarch64 -S connect -F key=network_outbound
+-a always,exit -F arch=arm -S connect -F key=network_outbound
+-a always,exit -F arch=b64 -S connect -F key=network_outbound
+-a always,exit -F arch=b32 -S connect -F key=network_outbound
+
+# 3. Monitor syscall process creation
+-a always,exit -F arch=aarch64 -S execve -F key=process_creation
+-a always,exit -F arch=arm -S execve -F key=process_creation
+-a always,exit -F arch=b64 -S execve -F key=process_creation
+-a always,exit -F arch=b32 -S execve -F key=process_creation
